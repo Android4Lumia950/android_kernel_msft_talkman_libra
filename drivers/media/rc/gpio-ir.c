@@ -296,7 +296,7 @@ err_regulator_enable:
 	return rc;
 }
 
-static int gpio_ir_tx_probe(struct gpio_ir_dev *gdev)
+static int __devinit gpio_ir_tx_probe(struct gpio_ir_dev *gdev)
 {
 	struct gpio_ir_data *gdata = gdev->pdev->dev.platform_data;
 	int rc = 0;
@@ -466,7 +466,7 @@ static irqreturn_t gpio_ir_rx_irq(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
-static int gpio_ir_rx_probe(struct gpio_ir_dev *gdev)
+static int __devinit gpio_ir_rx_probe(struct gpio_ir_dev *gdev)
 {
 	struct gpio_ir_data *gdata = gdev->pdev->dev.platform_data;
 	unsigned long flags;
@@ -613,7 +613,7 @@ static const struct dev_pm_ops gpio_ir_pm_ops = {
 #endif
 
 /* code for probe and remove */
-static int gpio_ir_probe(struct platform_device *pdev)
+static int __devinit gpio_ir_probe(struct platform_device *pdev)
 {
 	struct gpio_ir_data *gdata;
 	struct gpio_ir_dev *gdev;
@@ -714,7 +714,7 @@ err_rc_allocate_device:
 	return rc;
 }
 
-static int gpio_ir_remove(struct platform_device *pdev)
+static int __devexit gpio_ir_remove(struct platform_device *pdev)
 {
 	struct gpio_ir_dev *gdev = platform_get_drvdata(pdev);
 
@@ -734,7 +734,7 @@ static const struct of_device_id of_gpio_ir_match[] = {
 
 static struct platform_driver gpio_ir_driver = {
 	.probe  = gpio_ir_probe,
-	.remove = gpio_ir_remove,
+	.remove = __devexit_p(gpio_ir_remove),
 	.driver = {
 		.name  = GPIO_IR_NAME,
 		.owner = THIS_MODULE,

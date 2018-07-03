@@ -137,6 +137,16 @@ config IR_MCE_KBD_DECODER
 	   Enable this option if you have a Microsoft Remote Keyboard for
 	   Windows Media Center Edition, which you would like to use with
 	   a raw IR receiver in your system.
+
+config IR_DUMP_DECODER
+	tristate "Enable IR dump decoder for debugging purpose"
+	depends on RC_CORE
+	default n
+
+	---help---
+	   Enable this option if you have an infrared remote control which
+	   you want to dump the IR signal.
+
 endif #RC_DECODERS
 
 menuconfig RC_DEVICES
