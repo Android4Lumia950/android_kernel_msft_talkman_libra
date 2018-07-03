@@ -1,4 +1,5 @@
 /* Copyright (c) 2013-2015,2017 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -200,6 +201,7 @@ static int32_t msm_isp_stats_configure(struct vfe_device *vfe_dev,
 	for (i = 0; i < vfe_dev->hw_info->stats_hw_info->num_stats_type; i++) {
 		if (!(stats_irq_mask & (1 << i)))
 			continue;
+
 		stream_info = &vfe_dev->stats_data.stream_info[i];
 
 		if (stream_info->state == STATS_INACTIVE) {

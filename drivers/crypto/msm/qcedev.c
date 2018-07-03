@@ -1,6 +1,7 @@
 /* Qualcomm CE device driver.
  *
  * Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1507,6 +1508,7 @@ static int qcedev_check_cipher_params(struct qcedev_cipher_op_req *req,
 				__func__, i, req->vbuf.dst[i].len);
 			goto error;
 		}
+
 		if (req->vbuf.dst[i].len >= U32_MAX - total) {
 			pr_err("%s: Integer overflow on total req dst vbuf length\n",
 				__func__);
@@ -1795,6 +1797,7 @@ long qcedev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			mutex_unlock(&hash_access_lock);
 			return err;
 		}
+
 
 		if (handle->sha_ctxt.diglen > QCEDEV_MAX_SHA_DIGEST) {
 			pr_err("Invalid sha_ctxt.diglen %d\n",

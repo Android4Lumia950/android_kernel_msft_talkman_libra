@@ -1,4 +1,5 @@
-/* Copyright (c) 2009-2015, 2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2015, 2017 The Linux Foundation. All rights reserved
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,8 +28,9 @@ DEFINE_MSM_MUTEX(msm_flash_mutex);
 static struct v4l2_file_operations msm_flash_v4l2_subdev_fops;
 static struct led_trigger *torch_trigger;
 #ifdef CONFIG_XIAOMI_MSM8992
-static struct msm_flash_ctrl_t *g_fctrl;
-static unsigned char g_flashlight_brightness;
+static struct msm_flash_ctrl_t *g_fctrl = NULL;
+static unsigned char g_flashlight_brightness = 0;
+static int power_count = 0;
 #endif
 
 static const struct of_device_id msm_flash_dt_match[] = {
@@ -133,6 +135,16 @@ static int32_t msm_flashlight_init(struct msm_flash_ctrl_t *flash_ctrl)
 	flash_ctrl->power_info.power_down_setting_size =
 		flash_ctrl->power_setting_array.size_down;
 
+	if ((flash_ctrl->power_info.power_setting_size > MAX_POWER_CONFIG) ||
+	(flash_ctrl->power_info.power_down_setting_size > MAX_POWER_CONFIG)) {
+		pr_err("%s:%d invalid power setting size=%d size_down=%d\n",
+			__func__, __LINE__,
+			flash_ctrl->power_info.power_setting_size,
+			flash_ctrl->power_info.power_down_setting_size);
+		rc = -EINVAL;
+		goto msm_flash_i2c_init_fail;
+	}
+
 	rc = msm_camera_power_up(&flash_ctrl->power_info,
 		flash_ctrl->flash_device_type,
 		&flash_ctrl->flash_i2c_client);
@@ -141,6 +153,7 @@ static int32_t msm_flashlight_init(struct msm_flash_ctrl_t *flash_ctrl)
 			__func__, __LINE__);
 		goto msm_flash_i2c_init_fail;
 	}
+	power_count++;
 
 	settings.size = 3;
 	settings.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
@@ -224,6 +237,7 @@ static void msm_flashlight_brightness_set(struct led_classdev *led_cdev,
 			pr_err("%s msm_camera_power_down failed %d\n",
 				__func__, __LINE__);
 		}
+		power_count--;
 		flash_powerup--;
 		CDBG("flash_powerdown = %d\n", flash_powerup);
 	}
@@ -470,6 +484,7 @@ static int32_t msm_flash_i2c_init(
 			flash_ctrl->power_setting_array.size_down);
 	} else
 #endif
+
 #ifndef CONFIG_XIAOMI_MSM8992
 	if (copy_from_user(&flash_ctrl->power_setting_array,
 		(void *)flash_init_info->power_setting_array,
@@ -513,6 +528,7 @@ static int32_t msm_flash_i2c_init(
 			__func__, __LINE__);
 		goto msm_flash_i2c_init_fail;
 	}
+	power_count++;
 
 	if (flash_data->cfg.flash_init_info->settings) {
 		settings = kzalloc(sizeof(
@@ -583,6 +599,7 @@ static int32_t msm_flash_i2c_release(
 {
 	int32_t rc = 0;
 
+	CDBG("Enter\n");
 	if (!(&flash_ctrl->power_info) || !(&flash_ctrl->flash_i2c_client)) {
 		pr_err("%s:%d failed: %p %p\n",
 			__func__, __LINE__, &flash_ctrl->power_info,
@@ -603,7 +620,9 @@ static int32_t msm_flash_i2c_release(
 	}
 
 #ifdef CONFIG_XIAOMI_MSM8992
+	power_count = 0;
 	flash_ctrl->flash_state = MSM_CAMERA_FLASH_RELEASE;
+	CDBG("Exit\n");
 #endif
 	return 0;
 }
@@ -1349,7 +1368,7 @@ static int32_t msm_flash_platform_probe(struct platform_device *pdev)
 	int32_t rc = 0;
 	struct msm_flash_ctrl_t *flash_ctrl = NULL;
 	struct msm_camera_cci_client *cci_client = NULL;
-	
+
 #ifdef CONFIG_XIAOMI_MSM8992
 	uint32_t id_info[3];
 #endif

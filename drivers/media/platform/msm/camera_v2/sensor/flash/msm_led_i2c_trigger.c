@@ -1,4 +1,5 @@
 /* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -138,8 +139,8 @@ static int msm_flash_pinctrl_init(struct msm_led_flash_ctrl_t *ctrl)
 		return -EINVAL;
 	}
 	flash_pctrl->gpio_state_active = pinctrl_lookup_state(
-					       flash_pctrl->pinctrl,
-					       CAM_FLASH_PINCTRL_STATE_DEFAULT);
+					  flash_pctrl->pinctrl,
+					  CAM_FLASH_PINCTRL_STATE_DEFAULT);
 
 	if (IS_ERR_OR_NULL(flash_pctrl->gpio_state_active)) {
 		pr_err("%s:%d Failed to get the active state pinctrl handle\n",
@@ -806,6 +807,7 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 			&msm_sensor_qup_func_tbl;
 
 	rc = msm_led_i2c_flash_create_v4lsubdev(fctrl);
+
 #ifdef CONFIG_DEBUG_FS
 	dentry = debugfs_create_file("ledflash", S_IRUGO, NULL, (void *)fctrl,
 		&ledflashdbg_fops);
@@ -886,6 +888,7 @@ int msm_flash_probe(struct platform_device *pdev,
 			&msm_sensor_cci_func_tbl;
 
 	rc = msm_led_flash_create_v4lsubdev(pdev, fctrl);
+
 #ifdef CONFIG_XIAOMI_MSM8992
 	if (!rc)
 		msm_led_flashlight_create_classdev(pdev, fctrl);

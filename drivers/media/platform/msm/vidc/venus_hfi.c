@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3751,7 +3752,6 @@ static int venus_hfi_init_bus(struct venus_hfi_device *device)
                 rc = -ENOMEM;
                 goto err_init_bus;
         }
-        device->bus_load.vote_data_count = 0;
 	return rc;
 err_init_bus:
 	venus_hfi_deinit_bus(device);

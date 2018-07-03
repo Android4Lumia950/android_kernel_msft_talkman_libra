@@ -1,4 +1,5 @@
 /* Copyright (c) 2008-2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -214,9 +215,9 @@ kgsl_mem_entry_create(void)
 		/* put this ref in the caller functions after init */
 		kref_get(&entry->refcount);
 	}
-
 	return entry;
 }
+
 #ifdef CONFIG_DMA_SHARED_BUFFER
 static void kgsl_destroy_ion(struct kgsl_dma_buf_meta *meta)
 {
@@ -2779,6 +2780,9 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	if (ret)
 		goto err;
 
+	/* put the extra refcount for kgsl_mem_entry_create() */
+	kgsl_mem_entry_put(entry);
+
 	return 0;
 err:
 	return ret;
@@ -3694,7 +3698,7 @@ long kgsl_ioctl_gpumem_alloc_id(struct kgsl_device_private *dev_priv,
 	param->gpuaddr = entry->memdesc.gpuaddr;
 
 	kgsl_mem_entry_commit_process(private, entry);
-
+	
 	/* put the extra refcount for kgsl_mem_entry_create() */
 	kgsl_mem_entry_put(entry);
 	return result;

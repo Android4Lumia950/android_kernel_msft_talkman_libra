@@ -1,4 +1,8 @@
 /* Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
+<<<<<<< HEAD
+=======
+ * Copyright (C) 2018 XiaoMi, Inc.
+>>>>>>> f4cab50d74f... Kernel: Xiaomi kernel changes for XiaoMi 4C/XiaoMi Note Pro/XiaoMi 4S.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and

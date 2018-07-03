@@ -1,4 +1,5 @@
 /* Copyright (c) 2009-2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -141,7 +142,7 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 	struct mdss_debug_base *dbg = file->private_data;
 	char buf[PANEL_TX_MAX_BUF] = {0x0};
 	char reg[PANEL_TX_MAX_BUF] = {0x0};
-	u32 len = 0, value = 0;
+	u32 len = 0, step = 0, value = 0;
 	char *bufp;
 
 	struct mdss_data_type *mdata = mdss_res;
@@ -164,22 +165,15 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 	buf[count] = 0;	/* end of string */
 
 	bufp = buf;
-	/* End of a hex value in given string */
-	bufp[NEXT_VALUE_OFFSET - 1] = 0;
-	while (kstrtouint(bufp, 16, &value) == 0) {
+	while (sscanf(bufp, "%x%n", &value, &step) > 0) {
 		reg[len++] = value;
 		if (len >= PANEL_TX_MAX_BUF) {
 			pr_err("wrong input reg len\n");
 			return -EFAULT;
 		}
-		bufp += NEXT_VALUE_OFFSET;
-		if ((bufp >= (buf + count)) || (bufp < buf)) {
-			pr_warn("%s,buffer out-of-bounds\n", __func__);
-			break;
-		}
-		/* End of a hex value in given string */
-		bufp[NEXT_VALUE_OFFSET - 1] = 0;
+		bufp += step;
 	}
+
 	if (len < PANEL_CMD_MIN_TX_COUNT) {
 		pr_err("wrong input reg len\n");
 		return -EFAULT;

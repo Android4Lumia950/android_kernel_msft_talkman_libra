@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -561,7 +562,8 @@ static int __ipa_add_hdr_proc_ctx(struct ipa_hdr_proc_ctx_add *proc_ctx,
 	return 0;
 
 bad_len:
-	hdr_entry->ref_cnt--;
+	if (add_ref_hdr)
+		hdr_entry->ref_cnt--;
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->hdr_proc_ctx_cache, entry);
 	return -EPERM;
