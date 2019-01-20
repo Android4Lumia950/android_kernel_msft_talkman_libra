@@ -1571,7 +1571,8 @@ ifeq ($(CONFIG_HIF_PCI), 1)
 CDEFINES += -DFORCE_LEGACY_PCI_INTERRUPTS
 endif
 
-KBUILD_CPPFLAGS += $(CDEFINES)
+EXTRA_CFLAGS += $(call cc-option, -g0)
+EXTRA_CFLAGS += $(call cc-option, -Os)
 
 # If the module name is not "wlan", then the define MULTI_IF_NAME to be the
 # same a the QCA CHIP name. The host driver will then append MULTI_IF_NAME to
