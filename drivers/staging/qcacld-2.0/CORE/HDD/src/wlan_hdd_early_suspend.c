@@ -104,6 +104,9 @@
  * Time includes 60sec timeout of request_firmware for various binaries
  * (OTP, BDWLAN, QWLAN) and other cleanup and re-init sequence
  */
+#include "wlan_hdd_host_offload.h"
+
+/* Time in msec */
 #ifdef CONFIG_SLUB_DEBUG_ON
 #define HDD_SSR_BRING_UP_TIME 250000
 #else
