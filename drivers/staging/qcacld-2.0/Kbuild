@@ -171,7 +171,7 @@ BUILD_DEBUG_VERSION := 0
 BUILD_DIAG_VERSION := 1
 
 #Do we panic on bug?  default is to warn
-PANIC_ON_BUG := 1
+PANIC_ON_BUG := 0
 
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
@@ -1571,8 +1571,7 @@ ifeq ($(CONFIG_HIF_PCI), 1)
 CDEFINES += -DFORCE_LEGACY_PCI_INTERRUPTS
 endif
 
-EXTRA_CFLAGS += $(call cc-option, -g0)
-EXTRA_CFLAGS += $(call cc-option, -Os)
+KBUILD_CPPFLAGS += $(CDEFINES)
 
 # If the module name is not "wlan", then the define MULTI_IF_NAME to be the
 # same a the QCA CHIP name. The host driver will then append MULTI_IF_NAME to
