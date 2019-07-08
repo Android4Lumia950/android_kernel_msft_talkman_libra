@@ -31,7 +31,7 @@ ifeq ($(KERNEL_ROOT),)
 endif
 
 EXTRA_CFLAGS += -I$(M)
-
+EXTRA_CFLAGS += -Werror=implicit-function-declaration
 obj-$(CONFIG_TSPDRV) += tspdrv.o
 
 all:
