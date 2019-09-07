@@ -136,18 +136,12 @@ choice
 	config DEFAULT_NOOP
 		bool "No-op"
 
-<<<<<<< HEAD
-=======
-	config DEFAULT_ZEN
-		bool "ZEN" if IOSCHED_ZEN=y
-
 	config DEFAULT_SIO
 		bool "SIO" if IOSCHED_SIO=y
 
 	config DEFAULT_FIOPS
 		bool "FIOPS" if IOSCHED_FIOPS=y
 
->>>>>>> edf19def1c7f... angler: Add SIO and FIOPS i/o schedulers
 endchoice
 
 config DEFAULT_IOSCHED
@@ -157,14 +151,8 @@ config DEFAULT_IOSCHED
 	default "cfq" if DEFAULT_CFQ
 	default "bfq" if DEFAULT_BFQ
 	default "noop" if DEFAULT_NOOP
-<<<<<<< HEAD
-
-=======
-	default "maple" if DEFAULT_MAPLE
-	default "zen" if DEFAULT_ZEN
 	default "fiops" if DEFAULT_FIOPS
 	default "sio" if DEFAULT_SIO
->>>>>>> edf19def1c7f... angler: Add SIO and FIOPS i/o schedulers
 endmenu
 
 endif
