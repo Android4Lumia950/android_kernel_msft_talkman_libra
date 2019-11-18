@@ -8663,11 +8663,13 @@ static int __iw_set_var_ints_getnone(struct net_device *dev,
                         __func__, apps_args[0], apps_args[1], apps_args[2],
                         apps_args[3], apps_args[4]);
                 if (hHal)
-                    return logPrintf(hHal, apps_args[0], apps_args[1],
+                    logPrintf(hHal, apps_args[0], apps_args[1],
                                      apps_args[2], apps_args[3], apps_args[4]);
+                	return 0;
 
             }
             break;
+            
         case WE_IBSS_GET_PEER_INFO:
              {
                 pr_info ( "Station ID = %d\n",apps_args[0]);
