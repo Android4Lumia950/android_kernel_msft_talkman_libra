@@ -32,6 +32,11 @@ unsigned int vow_config = 0;
 module_param(vow_config, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(vow_config, "Do VoW Configuration");
 
+static char *mac;
+module_param(mac, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+MODULE_PARM_DESC(mac, "QCA 6164 mac address");
+EXPORT_SYMBOL(mac);
+
 #ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
 /**
  * ol_cfg_update_bundle_params() - update tx bundle params
