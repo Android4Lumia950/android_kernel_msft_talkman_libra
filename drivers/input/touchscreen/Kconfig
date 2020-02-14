@@ -115,7 +115,7 @@ config TOUCHSCREEN_ATMEL_MXT_LIBRA
 
 config TOUCHSCREEN_ATMEL_MXT_LIBRA_EDGE_SUPPORT
 	tristate "Atmel mXT I2C Touchscreen edge support"
-	depends on TOUCHSCREEN_ATMEL_MXT
+	depends on TOUCHSCREEN_ATMEL_MXT_LIBRA
 	help
 	  Say Y here is your Atmel mXT support edge touch.
 
