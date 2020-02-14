@@ -1,0 +1,25 @@
+BUILD_DIR=/home/gah0/EAS/msm-3.10/
+
+export OLDPROMPT="$PS1"
+export PS1="(dev) $OLDPROMPT"
+
+export ARCH=arm64
+export CROSS_COMPILE=/home/gah0/gcc/gcc-linaro-5.4.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+export defconfig=libra_defconfig
+
+mke(){
+  mkdir -p $BUILD_DIR
+  make CROSS_COMPILE=$CROSS_COMPILE $defconfig
+  make -j4 CROSS_COMPILE=$CROSS_COMPILE 2>&1 $@ | tee kernel.log
+}
+
+mr(){
+  sudo make mrproper
+  cd $BUILD_DIR
+  sudo make mrproper
+}
+
+deactivate(){
+  export PS1="$OLDPROMPT"
+}
+
