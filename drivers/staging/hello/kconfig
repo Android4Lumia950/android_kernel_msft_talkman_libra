@@ -1,0 +1,9 @@
+config HELLO
+	tristate "say hello"
+	default n
+
+	---help---
+	  This driver provides hello message on log
+
+	  To compile this driver as a module, choose M here. The module
+	  will be called hello.
