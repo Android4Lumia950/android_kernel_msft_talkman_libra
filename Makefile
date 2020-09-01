@@ -367,6 +367,7 @@ LINUXINCLUDE := \
 		$(if $(KBUILD_SRC), -I$(srctree)/include) \
 		-Iinclude $(USERINCLUDE)
 
+ifeq ($(cc-name),gcc)
 # Use arch specific optimization
 KBUILD_CFLAGS += \
 		-fdiagnostics-color \
@@ -382,6 +383,7 @@ KBUILD_CFLAGS += \
 		-mcpu=cortex-a57.cortex-a53 \
 		-mtune=cortex-a57.cortex-a53 \
 		-Wl,-O3,--sort-common,--strip-debug
+endif
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
