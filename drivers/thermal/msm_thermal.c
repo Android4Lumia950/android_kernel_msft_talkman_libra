@@ -1552,9 +1552,10 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 		goto done_vdd_rstr_en;
 	}
 
-	if ((val == 0) && (en->enabled == 0))
+//	if ((val == 0) && (en->enabled == 0))
 		goto done_vdd_rstr_en;
 
+#if 0
 	for (i = 0; i < rails_cnt; i++) {
 		if (rails[i].freq_req == 1 && freq_table_get)
 			ret = vdd_restriction_apply_freq(&rails[i],
@@ -1567,6 +1568,7 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 		 * Even if fail to set one rail, still try to set the
 		 * others. Continue the loop
 		 */
+
 		if (ret)
 			pr_err("Set vdd restriction for %s failed\n",
 					rails[i].name);
@@ -1577,6 +1579,7 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 				dis_cnt++;
 		}
 	}
+
 	/* As long as one rail is enabled, vdd rstr is enabled */
 	if (val && en_cnt)
 		en->enabled = 1;
@@ -1584,6 +1587,7 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 		en->enabled = 0;
 	pr_debug("%s vdd restriction. curr: %d\n",
 			(val) ? "Enable" : "Disable", en->enabled);
+#endif
 
 done_vdd_rstr_en:
 	mutex_unlock(&vdd_rstr_mutex);
@@ -1841,18 +1845,19 @@ static ssize_t ocr_reg_mode_store(struct kobject *kobj,
 		goto done_ocr_store;
 	}
 
-	if ((val != OPTIMUM_CURRENT_MAX) &&
-		(val != OPTIMUM_CURRENT_MIN)) {
-		pr_err("Invalid value %d for mode\n", val);
-		goto done_ocr_store;
-	}
-
+//	if ((val != OPTIMUM_CURRENT_MAX) &&
+//		(val != OPTIMUM_CURRENT_MIN)) {
+//		pr_err("Invalid value %d for mode\n", val);
+			goto done_ocr_store;
+//	}
+#if 0
 	if (val != reg->mode) {
 		ret = request_optimum_current(reg, val);
 		if (ret)
 			goto done_ocr_store;
 		reg->mode = val;
 	}
+#endif
 
 done_ocr_store:
 	mutex_unlock(&ocr_mutex);
@@ -1936,11 +1941,12 @@ static ssize_t psm_reg_mode_store(struct kobject *kobj,
 		goto done_psm_store;
 	}
 
-	if ((val != PMIC_PWM_MODE) && (val != PMIC_AUTO_MODE)) {
-		pr_err("Invalid number %d for mode\n", val);
+//	if ((val != PMIC_PWM_MODE) && (val != PMIC_AUTO_MODE)) {
+//		pr_err("Invalid number %d for mode\n", val);
 		goto done_psm_store;
-	}
+//	}
 
+#if 0
 	if (val != reg->mode) {
 		ret = rpm_regulator_set_mode(reg->reg, val);
 		if (ret) {
@@ -1950,6 +1956,7 @@ static ssize_t psm_reg_mode_store(struct kobject *kobj,
 		}
 		reg->mode = val;
 	}
+#endif
 
 done_psm_store:
 	mutex_unlock(&psm_mutex);
@@ -4275,7 +4282,7 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 	if (core_control_enabled == !!val)
 		goto done_store_cc;
 */
-
+#if 0
 	core_control_enabled = !!val;
 	if (core_control_enabled) {
 		pr_info("Core control enabled\n");
@@ -4285,6 +4292,7 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 		 * Re-evaluate thermal core condition, update current status
 		 * and set threshold for all cpus.
 		 */
+#endif
 		hotplug_init_cpu_offlined();
 		mutex_lock(&core_control_mutex);
 		update_offline_cores(cpus_offlined);
@@ -4295,7 +4303,7 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 					continue;
 				sensor_mgr_set_threshold(cpus[cpu].sensor_id,
 				&cpus[cpu].threshold[HOTPLUG_THRESHOLD_HIGH]);
-			}
+//			}
 		}
 		mutex_unlock(&core_control_mutex);
 	} else {
@@ -4330,11 +4338,12 @@ static ssize_t __ref store_cpus_offlined(struct kobject *kobj,
 	//return early
 	goto done_cc;
 
-	if (polling_enabled) {
-		pr_err("Ignoring request; polling thread is enabled.\n");
+//	if (polling_enabled) {
+//		pr_err("Ignoring request; polling thread is enabled.\n");
 		goto done_cc;
-	}
+//	}
 
+/*	
 	for_each_possible_cpu(cpu) {
 		if (!(msm_thermal_info.core_control_mask & BIT(cpu)))
 			continue;
@@ -4348,6 +4357,7 @@ static ssize_t __ref store_cpus_offlined(struct kobject *kobj,
 		complete(&hotplug_notify_complete);
 	else
 		pr_err("Hotplug task is not initialized\n");
+*/
 done_cc:
 	mutex_unlock(&core_control_mutex);
 	return count;
@@ -4422,7 +4432,7 @@ static ssize_t __ref store_mx_enabled(struct kobject *kobj,
 	if (vdd_mx_enabled == !!val)
 		goto done_store_mx;
 
-	vdd_mx_enabled = !!val;
+/*	vdd_mx_enabled = !!val;
 
 	mutex_lock(&vdd_mx_mutex);
 	if (!vdd_mx_enabled)
@@ -4430,7 +4440,7 @@ static ssize_t __ref store_mx_enabled(struct kobject *kobj,
 	else if (!(convert_to_zone_id(&thresh[MSM_VDD_MX_RESTRICTION])))
 		therm_set_threshold(&thresh[MSM_VDD_MX_RESTRICTION]);
 	mutex_unlock(&vdd_mx_mutex);
-
+*/
 done_store_mx:
 	return count;
 }
@@ -4643,8 +4653,8 @@ int msm_thermal_init(struct msm_thermal_data *pdata)
 		return -EINVAL;
 	}
 
-	enabled = 1;
-	polling_enabled = 1;
+	enabled = 0;
+	polling_enabled = 0;
 	ret = cpufreq_register_notifier(&msm_thermal_cpufreq_notifier,
 			CPUFREQ_POLICY_NOTIFIER);
 	if (ret)
@@ -4801,12 +4811,12 @@ static ssize_t bucket_info_store(struct kobject *kobj,
 		pr_err("Invalid input:%s. ret:%d", buf, ret);
 		goto done_store;
 	}
-
+/*
 	bucket = val & 0xff;
 	pr_debug("\"%s\"(PID:%i) request cluster:%d bucket:%d\n",
 		current->comm, current->pid, (bucket & 0xf0) >> 4,
 		bucket & 0xf);
-
+*/
 done_store:
 	return count;
 }
@@ -5541,8 +5551,8 @@ static int probe_cc(struct device_node *node, struct msm_thermal_data *data,
 	uint32_t cpu = 0;
 
 	if (num_possible_cpus() > 1) {
-		core_control_enabled = 0;
-		hotplug_enabled = 0;
+		core_control_enabled = false;
+		hotplug_enabled = false;
 	}
 
 	key = "qcom,core-limit-temp";
