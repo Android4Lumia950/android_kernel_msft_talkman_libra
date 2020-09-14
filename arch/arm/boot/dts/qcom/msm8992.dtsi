@@ -36,7 +36,7 @@
 					compatible = "android,system";
 					dev = "/dev/block/platform/soc.0/f9824900.sdhci/by-name/system";
 					type = "ext4";
-					mnt_flags = "ro,barrier=1,discard";
+					mnt_flags = "ro,barrier=0,discard";
 					fsmgr_flags = "wait";
 					status = "ok";
 				};
@@ -2831,26 +2831,28 @@
 	qcom,msm-thermal {
 		compatible = "qcom,msm-thermal";
 		qcom,sensor-id = <7>;
-		qcom,poll-ms = <1000>;
-		qcom,limit-temp = <55>;
-		qcom,temp-hysteresis = <5>;
-		qcom,therm-reset-temp = <100>;
+		qcom,poll-ms = <500>;
+		qcom,limit-temp = <75>;
+		qcom,temp-hysteresis = <10>;
+		qcom,therm-reset-temp = <120>;
 		qcom,disable-ocr;
 		qcom,disable-psm;
 		qcom,disable-gfx-phase-ctrl;
 		qcom,disable-cx-phase-ctrl;
-		qcom,freq-step = <1>;
-		qcom,freq-control-mask = <0>;
-		qcom,core-limit-temp = <65>;
+		qcom,freq-step = <2>;
+		qcom,freq-control-mask = <0x3f>;
+		qcom,core-limit-temp = <80>;
 		qcom,core-temp-hysteresis = <10>;
 		qcom,core-control-mask = <0x3e>;
-		qcom,hotplug-temp = <65>;
-		qcom,hotplug-temp-hysteresis = <10>;
-		qcom,cpu-sensors = "tsens_tz_sensor7", "tsens_tz_sensor7", "tsens_tz_sensor9", "tsens_tz_sensor10", "tsens_tz_sensor13", "tsens_tz_sensor14";
-		qcom,freq-mitigation-temp = <75>;
-		qcom,freq-mitigation-temp-hysteresis = <10>;
+		qcom,hotplug-temp = <110>;
+		qcom,hotplug-temp-hysteresis = <40>;
+		qcom,cpu-sensors = "tsens_tz_sensor7", "tsens_tz_sensor7",
+				   "tsens_tz_sensor9", "tsens_tz_sensor10",
+				   "tsens_tz_sensor13", "tsens_tz_sensor14";
+		qcom,freq-mitigation-temp = <100>;
+		qcom,freq-mitigation-temp-hysteresis = <20>;
 		qcom,freq-mitigation-value = <768000>;
-		qcom,freq-mitigation-control-mask = <0>;
+		qcom,freq-mitigation-control-mask = <0x30>;
 		qcom,online-hotplug-core;
 		qcom,synchronous-cluster-id = <0 1>;
 		qcom,vdd-restriction-temp = <5>;
