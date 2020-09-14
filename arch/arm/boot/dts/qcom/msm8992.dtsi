@@ -3265,6 +3265,42 @@
 			};
 		};
 	};
+
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,thermal-vadc = <&pm8994_vadc>;
+		qcom,adc-channel = <0x73>;
+		qcom,poll-ms = <3000>;
+		qcom,start-delay = <60>;
+
+		zone@0 {
+			reg = <0x0>;
+			qcom,silver-khz = <1440000>;
+			qcom,gold-khz = <1248000>;
+			qcom,trip-deg = <43>;
+		};
+
+		zone@1 {
+			reg = <0x1>;
+			qcom,silver-khz = <1248000>;
+			qcom,gold-khz = <960000>;
+			qcom,trip-deg = <45>;
+		};
+
+		zone@2 {
+			reg = <0x2>;
+			qcom,silver-khz = <960000>;
+			qcom,gold-khz = <768000>;
+			qcom,trip-deg = <48>;
+		};
+
+		zone@3 {
+			reg = <0x3>;
+			qcom,silver-khz = <960000>;
+			qcom,gold-khz = <480000>;
+			qcom,trip-deg = <55>;
+		};
+	};
 };
 
 &gdsc_usb30 {
