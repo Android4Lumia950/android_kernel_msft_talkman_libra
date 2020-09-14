@@ -89,7 +89,7 @@ module_param(temp_threshold, int, 0644);
 
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
-static bool core_control_enabled;
+static bool core_control_enabled = 0;
 static uint32_t cpus_offlined;
 static cpumask_var_t cpus_previously_online;
 static DEFINE_MUTEX(core_control_mutex);
@@ -102,8 +102,8 @@ static struct completion hotplug_notify_complete;
 static struct completion freq_mitigation_complete;
 static struct completion thermal_monitor_complete;
 
-static int enabled;
-static int polling_enabled;
+static int enabled = 0;
+static int polling_enabled = 0;
 static int rails_cnt;
 static int sensor_cnt;
 static int psm_rails_cnt;
@@ -123,7 +123,7 @@ static bool sensor_info_probed;
 static bool psm_enabled;
 static bool psm_nodes_called;
 static bool psm_probed;
-static bool freq_mitigation_enabled;
+static bool freq_mitigation_enabled = false;
 static bool ocr_enabled;
 static bool ocr_nodes_called;
 static bool ocr_probed;
@@ -4231,6 +4231,7 @@ static int __ref set_enabled(const char *val, const struct kernel_param *kp)
 {
 	int ret = 0;
 
+#if 0
 	ret = param_set_bool(val, kp);
 	if (!enabled)
 		interrupt_mode_init();
@@ -4239,7 +4240,7 @@ static int __ref set_enabled(const char *val, const struct kernel_param *kp)
 			enabled);
 
 	pr_info("enabled = %d\n", enabled);
-
+#endif
 	return ret;
 }
 
@@ -4269,9 +4270,11 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 		pr_err("Invalid input %s. err:%d\n", buf, ret);
 		goto done_store_cc;
 	}
-
+	
+/*
 	if (core_control_enabled == !!val)
 		goto done_store_cc;
+*/
 
 	core_control_enabled = !!val;
 	if (core_control_enabled) {
@@ -5538,8 +5541,8 @@ static int probe_cc(struct device_node *node, struct msm_thermal_data *data,
 	uint32_t cpu = 0;
 
 	if (num_possible_cpus() > 1) {
-		core_control_enabled = 1;
-		hotplug_enabled = 1;
+		core_control_enabled = 0;
+		hotplug_enabled = 0;
 	}
 
 	key = "qcom,core-limit-temp";
