@@ -239,41 +239,6 @@
 			};
 		};
 
-		pmx_i2c_5_1 {
-			qcom,pins = <&gp 23>; /* SDA*/
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <4>;
-			label = "pmx_i2c_5_1";
-
-			i2c_5_1_active: i2c_5_1_active {
-				drive-strength = <2>;
-				bias-disable;
-			};
-
-			i2c_5_1_sleep: i2c_5_1_sleep {
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		pmx_i2c_5_2 {
-			qcom,pins = <&gp 24>; /* SCL*/
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <5>;
-			label = "pmx_i2c_5_2";
-
-			i2c_5_2_active: i2c_5_2_active {
-				drive-strength = <2>;
-				bias-disable;
-			};
-
-			i2c_5_2_sleep: i2c_5_2_sleep {
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-
 		pmx_i2c_6 {
 			qcom,pins = <&gp 28>, <&gp 27>; /* SDA, SCL */
 			qcom,num-grp-pins = <2>;
@@ -890,55 +855,6 @@
 				bias-disable;
 			};
 		};
-
-		x6db0_int_pin {
-			/* Gyroscope and accelerometer sensor combo */
-			qcom,pins = <&gp 64>;
-			qcom,pin-func = <0>;
-			qcom,num-grp-pins = <1>;
-			label = "x6db0-irq";
-			x6db0_int_default: x6db0_int_default {
-				drive-strength = <6>;
-				bias-pull-up;
-			};
-			x6db0_int_sleep: x6db0_int_sleep {
-				drive-strength = <2>;
-				bias-pull-down;
-			};
-		};
-
-		x6db0_reset_pin {
-			/* Gyroscope and accelerometer sensor combo */
-			qcom,pins = <&gp 74>;
-			qcom,pin-func = <0>;
-			qcom,num-grp-pins = <1>;
-			label = "x6db0-reset";
-			x6db0_reset_default: x6db0_reset_default {
-				drive-strength = <6>;
-				bias-pull-up;
-			};
-			x6db0_reset_sleep: x6db0_reset_sleep {
-				drive-strength = <2>;
-				bias-pull-down;
-			};
-		};
-
-		x6db0_wakeup_pin {
-			/* Gyroscope and accelerometer sensor combo */
-			qcom,pins = <&gp 42>;
-			qcom,pin-func = <0>;
-			qcom,num-grp-pins = <1>;
-			label = "x6db0-wakeup";
-			x6db0_wakeup_default: x6db0_wakeup_default {
-				drive-strength = <6>;
-				bias-pull-up;
-			};
-			x6db0_wakeup_sleep: x6db0_wakeup_sleep {
-				drive-strength = <2>;
-				bias-pull-down;
-			};
-		};
-
 
 		pmx_i2c_5 {
 			qcom,pins = <&gp 83>, <&gp 84>; /* SDA, SCL */

@@ -684,21 +684,6 @@
 			status = "disabled";
 		};
 	};
-	i2c@f9927000 {
-		x6db0@08 { /* Gyroscope and accelerometer sensor combo */
-                        compatible = "st,lsm6db0";
-                        reg = <0x08>;
-
-                        interrupt-parent = <&msm_gpio>;
-                        interrupts = <64 0x2004>;
-                        st,reset-gpio = <&msm_gpio 74 0x00>;
-			st,wakeup-gpio = <&msm_gpio 42 0x00>;
-                        vdd-supply = <&pm8994_lvs2>;
-                        vmag-supply = <&pm8994_l18>;
-                        i2c-supply = <&pm8994_lvs2>;
-                };
-
-	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
