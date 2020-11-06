@@ -317,11 +317,6 @@
 	};
 };
 
-/* PWM for vibrator */
-&pm8994_pwm_1 {
-	status = "okay";
-};
-
 /* PWM for IR */
 &pm8994_pwm_3 {
 	status = "okay";
@@ -607,14 +602,6 @@
 		enable-active-high;
 	};
 
-	vibrator_vreg: vibrator_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "vibrator_vreg";
-		gpio = <&msm_gpio 57 0>;
-		startup-delay-us = <5000>;
-		enable-active-high;
-	};
-
 	gen-vkeys {
 		compatible = "qcom,gen-vkeys";
 		label = "synaptics_dsx";
@@ -703,20 +690,6 @@
                 compatible = "pwm-ir";
 		pwms = <&pm8994_pwm_3 0 0>;
         };
-	vibrator-isa1000@c300 {
-		status = "okay";
-		compatible = "vibrator,isa1000";
-		label = "vibrator";
-		vdd-supply = <&vibrator_vreg>;
-		pwms = <&pm8994_pwm_1 0 0>;
-		pinctrl-names = "vibrator_pin_active", "vibrator_pin_suspend";
-		pinctrl-0 = <&vibrator_pin_active>;
-		pinctrl-1 = <&vibrator_pin_suspend>;
-		isa1000,enable-gpio = <&msm_gpio 21 0x00>;
-		isa1000,timeout-ms = <15000>;
-		isa1000,period-us = <44>;
-		isa1000,duty-us = <10>;
-	};
 };
 
 &pm8994_vadc {
