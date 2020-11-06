@@ -421,28 +421,6 @@
 		qcom,key-codes = <158 139 102 217>;
 	};
 
-	i2c@f9928000 { /* BLSP1 QUP6 */
-		status = "ok";
-		pericom@1d {
-			compatible = "pericom,30216a";
-			reg = <0x1d>;
-
-			interrupt-parent = <&msm_gpio>;
-			interrupts = <31 0>;
-
-			i2c-supply = <&pm8994_lvs2>;
-		};
-
-		tusb320@60 {
-			compatible = "ti,tusb320";
-			reg = <0x60>;
-
-			interrupt-parent = <&msm_gpio>;
-			interrupts = <31 0>;
-
-			i2c-supply = <&pm8994_lvs2>;
-        };
-
 		nfc-nci@e {
 			compatible = "qcom,nfc-nci";
 			reg = <0x0e>;
