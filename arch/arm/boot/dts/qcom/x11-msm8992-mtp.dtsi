@@ -317,20 +317,6 @@
 	};
 };
 
-/* PWM for IR */
-&pm8994_pwm_3 {
-	status = "okay";
-};
-
-/* PWMs for button key backlight */
-&pm8994_pwm_2 {
-	status = "okay";
-};
-
-&pm8994_pwm_4 {
-	status = "okay";
-};
-
 &pm8994_mpps {
 	mpp@a100 { /* MPP 2 */
 		qcom,mode = <1>;		/* Digital output */
@@ -685,11 +671,6 @@
 			debounce-interval = <15>;
 		};
 	};
-
-	pwm_ir {
-                compatible = "pwm-ir";
-		pwms = <&pm8994_pwm_3 0 0>;
-        };
 };
 
 &pm8994_vadc {
