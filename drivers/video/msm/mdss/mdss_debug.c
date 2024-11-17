@@ -38,9 +38,6 @@
 #define PANEL_CMD_MIN_TX_COUNT 2
 #define PANEL_DATA_NODE_LEN 80
 
-/* Hex number + whitespace */
-#define NEXT_VALUE_OFFSET 3
-
 static DEFINE_MUTEX(mdss_debug_lock);
 
 static char panel_reg[2] = {DEFAULT_READ_PANEL_POWER_MODE_REG, 0x00};
@@ -139,22 +136,32 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 		const char __user *user_buf, size_t count, loff_t *ppos)
 {
 	struct mdss_debug_base *dbg = file->private_data;
+
+	u32 cnt, tmp, i;
+	u32 len = 0;
 	char buf[PANEL_TX_MAX_BUF] = {0x0};
+	char *p = NULL;
 	char reg[PANEL_TX_MAX_BUF] = {0x0};
-	u32 len = 0, value = 0;
-	char *bufp;
 
 	struct mdss_data_type *mdata = mdss_res;
-	struct mdss_mdp_ctl *ctl;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+	struct mdss_mdp_ctl *ctl = mdata->ctl_off + 0;
+	struct mdss_panel_data *panel_data = ctl->panel_data;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(panel_data,
+					struct mdss_dsi_ctrl_pdata, panel_data);
+
 	struct dsi_cmd_desc dsi_write_cmd = {
-		{0/*data type*/, 1, 0, 0, 0, 0/* len */}, reg};
+		{DTYPE_GEN_LWRITE, 1, 0, 0, 0, 0/*len*/}, reg};
 	struct dcs_cmd_req cmdreq;
+
+	cmdreq.cmds = &dsi_write_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
 
 	if (!dbg || !mdata)
 		return -ENODEV;
 
-	/* get command string from user */
 	if (count >= sizeof(buf))
 		return -EFAULT;
 
@@ -163,46 +170,28 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 
 	buf[count] = 0;	/* end of string */
 
-	bufp = buf;
-	/* End of a hex value in given string */
-	bufp[NEXT_VALUE_OFFSET - 1] = 0;
-	while (kstrtouint(bufp, 16, &value) == 0) {
-		reg[len++] = value;
-		if (len >= PANEL_TX_MAX_BUF) {
-			pr_err("wrong input reg len\n");
-			return -EFAULT;
-		}
-		bufp += NEXT_VALUE_OFFSET;
-		if ((bufp >= (buf + count)) || (bufp < buf)) {
-			pr_warn("%s,buffer out-of-bounds\n", __func__);
-			break;
-		}
-		/* End of a hex value in given string */
-		bufp[NEXT_VALUE_OFFSET - 1] = 0;
-	}
+	len = count / 3;
+
 	if (len < PANEL_CMD_MIN_TX_COUNT) {
 		pr_err("wrong input reg len\n");
 		return -EFAULT;
 	}
 
-	/* put command to cmdlist */
-	dsi_write_cmd.dchdr.dtype = dbg->cmd_data_type;
-	dsi_write_cmd.dchdr.dlen = len;
-	dsi_write_cmd.payload = reg;
-
-	cmdreq.cmds = &dsi_write_cmd;
-	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
-
-	ctl = mdata->ctl_off + 0;
-	ctrl_pdata = container_of(ctl->panel_data,
-		struct mdss_dsi_ctrl_pdata, panel_data);
+	for (i = 0; i < len; i++) {
+		p = buf + i * 3;
+		p[2] = 0;
+		pr_debug("p[%d] = %pK:%s\n", i, p, p);
+		cnt = sscanf(p, "%x", &tmp);
+		if (cnt != 1)
+			return -EFAULT;
+		reg[i] = tmp;
+		pr_debug("reg[%d] = %x\n", i, (int)reg[i]);
+	}
 
 	if (mdata->debug_inf.debug_enable_clock)
 		mdata->debug_inf.debug_enable_clock(1);
 
+	dsi_write_cmd.dchdr.dlen = len;
 	mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq);
 
 	if (mdata->debug_inf.debug_enable_clock)
@@ -300,7 +289,7 @@ int panel_debug_register_base(const char *name, void __iomem *base,
 	struct mdss_data_type *mdata = mdss_res;
 	struct mdss_debug_data *mdd;
 	struct mdss_debug_base *dbg;
-	struct dentry *ent_off, *ent_reg, *ent_type;
+	struct dentry *ent_off, *ent_reg;
 	char dn[PANEL_DATA_NODE_LEN] = "";
 	int prefix_len = 0;
 
@@ -317,19 +306,9 @@ int panel_debug_register_base(const char *name, void __iomem *base,
 	dbg->max_offset = max_offset;
 	dbg->off = 0x0a;
 	dbg->cnt = 0x01;
-	dbg->cmd_data_type = DTYPE_DCS_LWRITE;
 
 	if (name)
 		prefix_len = snprintf(dn, sizeof(dn), "%s_", name);
-
-	strlcpy(dn + prefix_len, "cmd_data_type", sizeof(dn) - prefix_len);
-	ent_type = debugfs_create_x8(dn, 0644, mdd->root,
-		(u8 *)&dbg->cmd_data_type);
-
-	if (IS_ERR_OR_NULL(ent_type)) {
-		pr_err("debugfs_create_file: data_type fail\n");
-		goto type_fail;
-	}
 
 	strlcpy(dn + prefix_len, "off", sizeof(dn) - prefix_len);
 	ent_off = debugfs_create_file(dn, 0644, mdd->root,
@@ -351,12 +330,9 @@ int panel_debug_register_base(const char *name, void __iomem *base,
 	list_add(&dbg->head, &mdd->base_list);
 
 	return 0;
-
 reg_fail:
 	debugfs_remove(ent_off);
 off_fail:
-	debugfs_remove(ent_type);
-type_fail:
 	kfree(dbg);
 	return -ENODEV;
 }
@@ -400,9 +376,6 @@ static ssize_t mdss_debug_base_offset_write(struct file *file,
 		return -EFAULT;
 
 	buf[count] = 0;	/* end of string */
-
-	if (off % sizeof(u32))
-		return -EINVAL;
 
 	sscanf(buf, "%5x %x", &off, &cnt);
 
@@ -478,9 +451,6 @@ static ssize_t mdss_debug_base_reg_write(struct file *file,
 	if (cnt < 2)
 		return -EFAULT;
 
-	if (off % sizeof(u32))
-		return -EFAULT;
-
 	if (off >= dbg->max_offset)
 		return -EFAULT;
 
@@ -525,9 +495,6 @@ static ssize_t mdss_debug_base_reg_read(struct file *file,
 			mutex_unlock(&mdss_debug_lock);
 			return -ENOMEM;
 		}
-
-		if (dbg->off % sizeof(u32))
-			return -EFAULT;
 
 		ptr = dbg->base + dbg->off;
 		tot = 0;
@@ -1280,7 +1247,6 @@ int mdss_misr_set(struct mdss_data_type *mdata,
 	}
 
 	map = mdss_misr_get_map(req->block_id, ctl, mdata);
-
 	if (!map) {
 		pr_err("Invalid MISR Block=%d\n", req->block_id);
 		return -EINVAL;

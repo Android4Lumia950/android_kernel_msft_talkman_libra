@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2015, 2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,7 +28,6 @@
 #define MAX_OPERAND_SIZE	14
 /* total size:  HEADER block (1) + opcode block (1) + operands (14) */
 #define MAX_CEC_FRAME_SIZE      (MAX_OPERAND_SIZE + 2)
-
 /*
  * Ref. HDMI 1.4a: Supplement-1 CEC Section 6, 7
  */

@@ -1,5 +1,4 @@
 /* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,6 +29,9 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
+#ifdef CONFIG_WAKE_GESTURES
+#include <linux/wake_gestures.h>
+#endif
 
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
@@ -57,7 +59,7 @@
 #define QPNP_PON_WARM_RESET_REASON1(base)	(base + 0xA)
 #define QPNP_PON_WARM_RESET_REASON2(base)	(base + 0xB)
 #define QPNP_POFF_REASON1(base)			(base + 0xC)
-#define QPNP_POFF_REASON2(base)                 (base + 0xD)
+#define QPNP_POFF_REASON2(base)         (base + 0xD)
 #define QPNP_PON_KPDPWR_S1_TIMER(base)		(base + 0x40)
 #define QPNP_PON_KPDPWR_S2_TIMER(base)		(base + 0x41)
 #define QPNP_PON_KPDPWR_S2_CNTL(base)		(base + 0x42)
@@ -77,7 +79,6 @@
 #define QPNP_PON_S3_SRC(base)			(base + 0x74)
 #define QPNP_PON_S3_DBC_CTL(base)		(base + 0x75)
 #define QPNP_PON_TRIGGER_EN(base)		(base + 0x80)
-#define QPNP_PON_PERPH_RB_SPARE(base)		(base + 0x8C)
 #define QPNP_PON_XVDD_RB_SPARE(base)		(base + 0x8E)
 #define QPNP_PON_SOFT_RB_SPARE(base)		(base + 0x8F)
 #define QPNP_PON_SEC_ACCESS(base)		(base + 0xD0)
@@ -116,7 +117,7 @@
 #define QPNP_PON_HARD_RESET_MASK		PON_MASK(7, 5)
 
 #define QPNP_PON_UVLO_DLOAD_EN		BIT(7)
-#define QPNP_PON_RB_SPARE_MASK		BIT(1)
+
 /* Ranges */
 #define QPNP_PON_S1_TIMER_MAX			10256
 #define QPNP_PON_S2_TIMER_MAX			2000
@@ -132,6 +133,13 @@
 #define QPNP_PON_BUFFER_SIZE			9
 
 #define QPNP_POFF_REASON_UVLO			13
+
+#ifdef CONFIG_WAKE_GESTURES
+bool pwrkey_pressed = false;
+bool pwrkey_suspend = false;
+static int cnt = 0;
+module_param(pwrkey_suspend, bool, 0755);
+#endif
 
 enum pon_type {
 	PON_KPDPWR,
@@ -154,7 +162,6 @@ struct qpnp_pon_config {
 	u16 s2_cntl2_addr;
 	bool old_state;
 	bool use_bark;
-	bool config_reset;
 };
 
 struct pon_regulator {
@@ -272,7 +279,7 @@ qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
  * It checks here to see if the restart reason register has been specified.
  * If it hasn't, this function should immediately return 0
  */
-int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
+int qpnp_pon_set_restart_reason(uint8_t reason)
 {
 	int rc = 0;
 	struct qpnp_pon *pon = sys_reset_dev;
@@ -283,8 +290,13 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
 	if (!pon->store_hard_reset_reason)
 		return 0;
 
+	// swap the 0/1/2 with 4/5/6 bits
+	// and 3/4/5/6 with 0/1/2/3 for backward compatibility
+	reason &= 0x7F;
+	reason = ((0x7&reason)<<4)|((0x78&reason)>>3);
+
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_SOFT_RB_SPARE(pon->base),
-					PON_MASK(7, 5), (reason << 5));
+					PON_MASK(7, 1), (reason << 1));
 	if (rc)
 		dev_err(&pon->spmi->dev,
 				"Unable to write to addr=%x, rc(%d)\n",
@@ -292,6 +304,8 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_pon_set_restart_reason);
+
+
 
 /*
  * qpnp_pon_check_hard_reset_stored - Checks if the PMIC need to
@@ -310,44 +324,6 @@ bool qpnp_pon_check_hard_reset_stored(void)
 	return pon->store_hard_reset_reason;
 }
 EXPORT_SYMBOL(qpnp_pon_check_hard_reset_stored);
-
-int qpnp_pon_set_rb_spare(struct device_node *dev_node, bool en)
-{
-	struct qpnp_pon *pon, *tmp;
-	int rc;
-	u8 val;
-	bool found = false;
-
-	if (!dev_node)
-		return -EINVAL;
-
-	mutex_lock(&spon_list_mutex);
-	if (list_empty(&spon_dev_list))
-		goto out;
-
-	list_for_each_entry_safe(pon, tmp, &spon_dev_list, list) {
-		if (pon->spmi->dev.of_node == dev_node) {
-			found = true;
-			break;
-		}
-	}
-out:
-	mutex_unlock(&spon_list_mutex);
-
-	if (!found || !pon)
-		return -EINVAL;
-
-	val = en ? QPNP_PON_RB_SPARE_MASK : 0x0;
-	rc = qpnp_pon_masked_write(pon, QPNP_PON_PERPH_RB_SPARE(pon->base),
-				QPNP_PON_RB_SPARE_MASK, val);
-	if (rc) {
-		dev_err(&pon->spmi->dev, "Unable to set PON debounce\n");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(qpnp_pon_set_rb_spare);
 
 static int qpnp_pon_set_dbc(struct qpnp_pon *pon, u32 delay)
 {
@@ -447,15 +423,6 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 	 * conservative.
 	 */
 	udelay(500);
-
-	/*
-	 * In case of HARD RESET configure PMIC's
-	 * PS_HOLD_RESET_CTL based on the dt property.
-	 */
-	if ((type == PON_POWER_OFF_HARD_RESET) &&
-			of_find_property(pon->spmi->dev.of_node,
-				"qcom,cfg-shutdown-for-hard-reset", NULL))
-		type = PON_POWER_OFF_SHUTDOWN;
 
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_PS_HOLD_RST_CTL(pon->base),
 				   QPNP_PON_POWER_OFF_MASK, type);
@@ -738,6 +705,17 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_WAKE_GESTURES
+	if (pwrkey_suspend) {
+		if (cfg->key_code == KEY_POWER && cnt == 0 && !scr_suspended()) {
+			pwrkey_pressed = true;
+			cnt++;
+		} else {
+			cnt = 0;
+		}
+	}
+#endif
+
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
@@ -772,6 +750,9 @@ static irqreturn_t qpnp_kpdpwr_irq(int irq, void *_pon)
 
 static irqreturn_t qpnp_kpdpwr_bark_irq(int irq, void *_pon)
 {
+	struct qpnp_pon *pon = _pon;
+
+	dev_info(&pon->spmi->dev, "Reset S1- KPD_PWR_N\n");
 	return IRQ_HANDLED;
 }
 
@@ -1206,18 +1187,10 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 
 			rc = of_property_read_u32(pp, "qcom,support-reset",
 							&cfg->support_reset);
-
-			if (rc) {
-				if (rc == -EINVAL) {
-					dev_dbg(&pon->spmi->dev,
-						"'qcom,support-reset' DT property doesn't exist\n");
-				 } else {
-					dev_err(&pon->spmi->dev,
-						"Unable to read 'qcom,support-reset'\n");
-					return rc;
-				}
-			} else {
-				cfg->config_reset = true;
+			if (rc && rc != -EINVAL) {
+				dev_err(&pon->spmi->dev,
+					"Unable to read 'support-reset'\n");
+				return rc;
 			}
 
 			cfg->use_bark = of_property_read_bool(pp,
@@ -1258,18 +1231,10 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 
 			rc = of_property_read_u32(pp, "qcom,support-reset",
 							&cfg->support_reset);
-
-			if (rc) {
-				if (rc == -EINVAL) {
-					dev_dbg(&pon->spmi->dev,
-						"'qcom,support-reset' DT property doesn't exist\n");
-				} else {
-					dev_err(&pon->spmi->dev,
-						"Unable to read 'qcom,support-reset'\n");
-					return rc;
-				}
-			} else {
-				cfg->config_reset = true;
+			if (rc && rc != -EINVAL) {
+				dev_err(&pon->spmi->dev,
+					"Unable to read 'support-reset'\n");
+				return rc;
 			}
 
 			cfg->use_bark = of_property_read_bool(pp,
@@ -1339,18 +1304,10 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 		case PON_KPDPWR_RESIN:
 			rc = of_property_read_u32(pp, "qcom,support-reset",
 							&cfg->support_reset);
-
-			if (rc) {
-				if (rc == -EINVAL) {
-					dev_dbg(&pon->spmi->dev,
-						"'qcom,support-reset' DT property doesn't exist\n");
-				} else {
-					dev_err(&pon->spmi->dev,
-						"Unable to read 'qcom,support-reset'\n");
-					return rc;
-				}
-			} else {
-				cfg->config_reset = true;
+			if (rc && rc != -EINVAL) {
+				dev_err(&pon->spmi->dev,
+					"Unable to read 'support-reset'\n");
+				return rc;
 			}
 
 			cfg->use_bark = of_property_read_bool(pp,
@@ -1472,6 +1429,12 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 				"Can't register pon key: %d\n", rc);
 			goto free_input_dev;
 		}
+#ifdef CONFIG_WAKE_GESTURES
+		else {
+			 wg_setdev(pon->pon_input);
+			 printk(KERN_INFO "[sweep2wake]: set device %s\n", pon->pon_input->name);
+		}
+#endif
 	}
 
 	for (i = 0; i < pon->num_pon_config; i++) {
@@ -1482,28 +1445,22 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 			dev_err(&pon->spmi->dev, "Unable to config pull-up\n");
 			goto unreg_input_dev;
 		}
-
-		if (cfg->config_reset) {
-			/* Configure the reset-configuration */
-			if (cfg->support_reset) {
-				rc = qpnp_config_reset(pon, cfg);
-				if (rc) {
-					dev_err(&pon->spmi->dev,
-						"Unable to config pon reset\n");
-					goto unreg_input_dev;
-				}
-			} else {
-				if (cfg->pon_type != PON_CBLPWR) {
-					/* disable S2 reset */
-					rc = qpnp_pon_masked_write(pon,
-						cfg->s2_cntl2_addr,
+		/* Configure the reset-configuration */
+		if (cfg->support_reset) {
+			rc = qpnp_config_reset(pon, cfg);
+			if (rc) {
+				dev_err(&pon->spmi->dev,
+					"Unable to config pon reset\n");
+				goto unreg_input_dev;
+			}
+		} else if (cfg->pon_type != PON_CBLPWR) {
+			/* disable S2 reset */
+			rc = qpnp_pon_masked_write(pon, cfg->s2_cntl2_addr,
 						QPNP_PON_S2_CNTL_EN, 0);
-					if (rc) {
-						dev_err(&pon->spmi->dev,
-							"Unable to disable S2 reset\n");
-						goto unreg_input_dev;
-					}
-				}
+			if (rc) {
+				dev_err(&pon->spmi->dev,
+					"Unable to disable S2 reset\n");
+				goto unreg_input_dev;
 			}
 		}
 
@@ -1724,7 +1681,7 @@ static int qpnp_pon_debugfs_uvlo_dload_set(const char *val,
 	return 0;
 }
 
-static struct kernel_param_ops dload_on_uvlo_ops = {
+static const struct kernel_param_ops dload_on_uvlo_ops = {
 	.set = qpnp_pon_debugfs_uvlo_dload_set,
 	.get = qpnp_pon_debugfs_uvlo_dload_get,
 };

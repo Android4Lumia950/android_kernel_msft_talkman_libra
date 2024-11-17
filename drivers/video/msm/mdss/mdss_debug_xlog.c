@@ -1,5 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
+/* Copyright (c) 2014-2016, 2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,15 +24,13 @@
 
 #ifdef CONFIG_FB_MSM_MDSS_XLOG_DEBUG
 #define XLOG_DEFAULT_ENABLE 1
+#else
+#define XLOG_DEFAULT_ENABLE 0
+#endif
+
 #define XLOG_DEFAULT_PANIC 1
 #define XLOG_DEFAULT_REGDUMP 0x2 /* dump in RAM */
 #define XLOG_DEFAULT_DBGBUSDUMP 0x3 /* dump in LOG & RAM */
-#else
-#define XLOG_DEFAULT_ENABLE 0
-#define XLOG_DEFAULT_PANIC 0
-#define XLOG_DEFAULT_REGDUMP 0
-#define XLOG_DEFAULT_DBGBUSDUMP 0
-#endif
 
 #define MDSS_XLOG_ENTRY	256
 #define MDSS_XLOG_MAX_DATA 6
@@ -549,6 +546,11 @@ static ssize_t mdss_xlog_dump_read(struct file *file, char __user *buff,
 
 	if (__mdss_xlog_dump_calc_range()) {
 		len = mdss_xlog_dump_entry(xlog_buf, MDSS_XLOG_BUF_MAX);
+		if (len < 0 || len > count) {
+			pr_err("len is more than the size of user buffer\n");
+			return 0;
+		}
+
 		if (copy_to_user(buff, xlog_buf, len))
 			return -EFAULT;
 		*ppos += len;
