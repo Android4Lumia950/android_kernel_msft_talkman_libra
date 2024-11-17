@@ -10,7 +10,7 @@
 #
 # Copyright (C) 1995-2001 by Russell King
 
-LDFLAGS_vmlinux	:=-p --no-undefined -X
+LDFLAGS_vmlinux	:=--no-undefined -X
 CPPFLAGS_vmlinux.lds = -DTEXT_OFFSET=$(TEXT_OFFSET)
 OBJCOPYFLAGS	:=-O binary -R .note -R .note.gnu.build-id -R .comment -S
 GZFLAGS		:=-9
@@ -18,7 +18,6 @@ GZFLAGS		:=-9
 LIBGCC 		:= $(shell $(CC) $(KBUILD_CFLAGS) -print-libgcc-file-name)
 
 KBUILD_DEFCONFIG := defconfig
-KBUILD_CFLAGS	+= -fno-pic
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
@@ -54,7 +53,11 @@ libs-y		+= $(LIBGCC)
 ifeq ($(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE),y)
 KBUILD_IMAGE	:= Image.gz-dtb
 else
+ifeq ($(CONFIG_BUILD_ARM64_UNCOMPRESSED_APPENDED_DTB_IMAGE),y)
+KBUILD_IMAGE	:= Image-dtb
+else
 KBUILD_IMAGE	:= Image.gz
+endif
 endif
 
 KBUILD_DTBS	:= dtbs
@@ -74,13 +77,13 @@ zinstall install: vmlinux
 
 dtbs: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts dtbs
-	$(Q)$(MAKE) $(build)=$(boot)/dts/qcom dtbs
+	$(Q)$(MAKE) $(build)=$(boot)/dts/lumia dtbs
 
 PHONY += vdso_install
 vdso_install:
 	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso $@
 
-Image.gz-dtb: vmlinux scripts dtbs
+Image-dtb Image.gz-dtb: vmlinux scripts dtbs
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 # We use MRPROPER_FILES and CLEAN_FILES now

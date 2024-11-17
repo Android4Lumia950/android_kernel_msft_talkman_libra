@@ -2,7 +2,6 @@
  * The input core
  *
  * Copyright (c) 1999-2002 Vojtech Pavlik
- * Copyright (C) 2018 XiaoMi, Inc.
  */
 
 /*
@@ -1935,22 +1934,18 @@ static unsigned int input_estimate_events_per_packet(struct input_dev *dev)
 
 	events = mt_slots + 1; /* count SYN_MT_REPORT and SYN_REPORT */
 
-	if (test_bit(EV_ABS, dev->evbit)) {
-		for (i = 0; i < ABS_CNT; i++) {
-			if (test_bit(i, dev->absbit)) {
-				if (input_is_mt_axis(i))
-					events += mt_slots;
-				else
-					events++;
-			}
+	for (i = 0; i < ABS_CNT; i++) {
+		if (test_bit(i, dev->absbit)) {
+			if (input_is_mt_axis(i))
+				events += mt_slots;
+			else
+				events++;
 		}
 	}
 
-	if (test_bit(EV_REL, dev->evbit)) {
-		for (i = 0; i < REL_CNT; i++)
-			if (test_bit(i, dev->relbit))
-				events++;
-	}
+	for (i = 0; i < REL_CNT; i++)
+		if (test_bit(i, dev->relbit))
+			events++;
 
 	/* Make room for KEY and MSC events */
 	events += 7;

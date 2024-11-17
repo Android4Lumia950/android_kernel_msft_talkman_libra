@@ -27,23 +27,6 @@
 		bootargs = "noirqdebug";
 	};
 
-	firmware: firmware {
-		android {
-			compatible = "android,firmware";
-			fstab {
-				compatible = "android,fstab";
-				system {
-					compatible = "android,system";
-					dev = "/dev/block/platform/soc.0/f9824900.sdhci/by-name/system";
-					type = "ext4";
-					mnt_flags = "ro,barrier=1,discard";
-					fsmgr_flags = "wait";
-					status = "ok";
-				};
-			};
-		};
-	};
-
 	aliases {
 		spi0 = &spi_0;
 		spi12 = &spi_12;
@@ -1185,7 +1168,7 @@
 		max-clock-frequency-hz = <125000000>, <0>, <1011000>, <0>, <0>, <0>, <0>, <0>;
 	};
 
-	qcom,cnss {
+	cnss: qcom,cnss {
 		compatible = "qcom,cnss";
 		wlan-bootstrap-gpio = <&msm_gpio 112 0>,
 				      <&msm_gpio 54 0>,

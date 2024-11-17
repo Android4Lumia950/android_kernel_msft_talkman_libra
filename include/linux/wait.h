@@ -981,6 +981,9 @@ do {									\
 /*
  * Waitqueues which are removed from the waitqueue_head at wakeup time
  */
+extern void interruptible_sleep_on(wait_queue_head_t *q);
+extern long interruptible_sleep_on_timeout(wait_queue_head_t *q,
+					   signed long timeout);
 void prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state);
 void prepare_to_wait_exclusive(wait_queue_head_t *q, wait_queue_t *wait, int state);
 void finish_wait(wait_queue_head_t *q, wait_queue_t *wait);

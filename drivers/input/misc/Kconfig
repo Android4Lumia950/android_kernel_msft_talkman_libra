@@ -228,6 +228,15 @@ config SENSORS_LIS3DH
 	  To compile this driver as a module, choose M here: the
 	  module will be called lis3dh_acc.
 
+config STMVL6180
+	tristate "STMVL6180"
+	default y
+	help
+	  Say Y here if you want to use STMicroelectronics proximity sensor
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called stmvl6180.
+
 config INPUT_APANEL
 	tristate "Fujitsu Lifebook Application Panel buttons"
 	depends on X86 && I2C && LEDS_CLASS
@@ -696,12 +705,6 @@ config INPUT_XEN_KBDDEV_FRONTEND
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
 
-config INPUT_FPC1020
-	tristate "Fpc1020 fingerprint sensor support"
-	depends on SPI
-	help
-	  Say Y here if you have Fpc1020 sensor hooked to an SPI bus.
-
 config BMP18X
        tristate "BMP18X digital pressure sensor"
        depends on (I2C ) && SYSFS
@@ -868,6 +871,10 @@ config SENSORS_ISL29044A
 	depends on I2C
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
+
+config INPUT_FPC1020
+       tristate "FPC_BTP fingerprint sensor support"
+       depends on SPI_MASTER
 
 endif
 
