@@ -1,5 +1,4 @@
 /* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -64,7 +63,7 @@ static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
 static int dload_set(const char *val, struct kernel_param *kp);
-static int download_mode = 0;
+static int download_mode = 1;
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -116,13 +115,14 @@ static void set_dload_mode(int on)
 	if (ret)
 		pr_err("Failed to set secure DLOAD mode: %d\n", ret);
 
-	if (on)
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-
 	dload_mode_enabled = on;
 }
 
-#if 0
+static bool get_dload_mode(void)
+{
+	return dload_mode_enabled;
+}
+
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -147,7 +147,7 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
-#endif
+
 static int dload_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
@@ -168,20 +168,14 @@ static int dload_set(const char *val, struct kernel_param *kp)
 
 	return 0;
 }
-
-int get_dload_mode(void)
-{
-	return download_mode;
-}
 #else
 #define set_dload_mode(x) do {} while (0)
 
-#if 0
 static void enable_emergency_dload_mode(void)
 {
 	pr_err("dload mode is not enabled on target\n");
 }
-#endif
+
 static bool get_dload_mode(void)
 {
 	return false;
@@ -220,6 +214,8 @@ static void halt_spmi_pmic_arbiter(void)
 
 static void msm_restart_prepare(const char *cmd)
 {
+	bool need_warm_reset = false;
+
 #ifdef CONFIG_MSM_DLOAD_MODE
 
 	/* Write download mode flags if we're panic'ing
@@ -231,11 +227,32 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
-	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+	need_warm_reset = (get_dload_mode() ||
+				(cmd != NULL && cmd[0] != '\0'));
 
-	if (in_panic) {
-		__raw_writel(0x77665508, restart_reason);
-	} else if (cmd != NULL) {
+	if (qpnp_pon_check_hard_reset_stored()) {
+		/* Set warm reset as true when device is in dload mode
+		 *  or device doesn't boot up into recovery, bootloader or rtc.
+		 */
+		if (get_dload_mode() ||
+			((cmd != NULL && cmd[0] != '\0') &&
+			strcmp(cmd, "recovery") &&
+			strcmp(cmd, "bootloader") &&
+			strcmp(cmd, "rtc") &&
+			strcmp(cmd, "dm-verity device corrupted") &&
+			strcmp(cmd, "dm-verity enforcing") &&
+			strcmp(cmd, "keys clear")))
+			need_warm_reset = true;
+	}
+
+	/* Hard reset the PMIC unless memory contents must be maintained. */
+	if (need_warm_reset) {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+	} else {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+	}
+
+	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_BOOTLOADER);
@@ -248,8 +265,6 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
 			__raw_writel(0x77665503, restart_reason);
-		} else if (!strcmp(cmd, "switch")) {
-			__raw_writel(0x77665504, restart_reason);
 		} else if (!strcmp(cmd, "dm-verity device corrupted")) {
 			__raw_writel(0x77665508, restart_reason);
 		} else if (!strcmp(cmd, "dm-verity enforcing")) {
@@ -263,11 +278,11 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+		} else if (!strncmp(cmd, "edl", 3)) {
+			enable_emergency_dload_mode();
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
-	} else {
-		__raw_writel(0x77665501, restart_reason);
 	}
 
 	flush_cache_all();
@@ -355,8 +370,6 @@ static void do_msm_poweroff(void)
 #ifdef CONFIG_MSM_DLOAD_MODE
 	set_dload_mode(0);
 #endif
-
-	__raw_writel(0x0, restart_reason);
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 	/* Needed to bypass debug image on some chips */
 	if (!is_scm_armv8())
@@ -428,8 +441,6 @@ static int msm_restart_probe(struct platform_device *pdev)
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (mem)
 		tcsr_boot_misc_detect = mem->start;
-
-	__raw_writel(0x77665510, restart_reason);
 
 	pm_power_off = do_msm_poweroff;
 	arm_pm_restart = do_msm_restart;
