@@ -2,6 +2,7 @@
  * xHCI host controller driver
  *
  * Copyright (C) 2008 Intel Corp.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * Author: Sarah Sharp
  * Some code borrowed from the Linux EHCI driver.
@@ -343,6 +344,14 @@ static void xhci_disable_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
 				"SuperSpeed port.\n");
 		return;
 	}
+
+	/*
+	 * Port fails to transition phy in to L2 state if port is in disabled
+	 * state and PORT_PE bit is set to 1
+	 */
+	port_status = xhci_readl(xhci, addr);
+	if (!(port_status & PORT_PE))
+		return;
 
 	/* Write 1 to disable the port */
 	xhci_writel(xhci, port_status | PORT_PE, addr);
@@ -955,17 +964,17 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				temp = xhci_readl(xhci, port_array[wIndex]);
 				break;
 			}
-			/* Port must be enabled */
-			if (!(temp & PORT_PE)) {
-				retval = -ENODEV;
-				break;
-			}
-			/* Can't set port link state above '3' (U3) */
-			if (link_state > USB_SS_PORT_LS_U3) {
-				xhci_warn(xhci, "Cannot set port %d link state %d\n",
-					 wIndex, link_state);
+
+			/* Software should not attempt to set
+			 * port link state above '3' (U3) and the port
+			 * must be enabled.
+			 */
+			if ((temp & PORT_PE) == 0 ||
+				(link_state > USB_SS_PORT_LS_U3)) {
+				xhci_warn(xhci, "Cannot set link state.\n");
 				goto error;
 			}
+
 			if (link_state == USB_SS_PORT_LS_U3) {
 				slot_id = xhci_find_slot_id_by_port(hcd, xhci,
 						wIndex + 1);
@@ -1345,13 +1354,14 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 	temp &= ~CMD_EIE;
 	xhci_writel(xhci, temp, &xhci->op_regs->command);
 
-	if ((xhci->quirks & XHCI_RESET_RS_ON_RESUME_QUIRK) &&
-			HC_IS_SUSPENDED(xhci->main_hcd->state) &&
-				HC_IS_SUSPENDED(xhci->shared_hcd->state)) {
-		xhci_halt(xhci);
-		if (!xhci_start(xhci))
-			xhci->cmd_ring_state = CMD_RING_STATE_RUNNING;
-	}
+	if (xhci->main_hcd && xhci->shared_hcd)
+		if ((xhci->quirks & XHCI_RESET_RS_ON_RESUME_QUIRK) &&
+				HC_IS_SUSPENDED(xhci->main_hcd->state) &&
+					HC_IS_SUSPENDED(xhci->shared_hcd->state)) {
+			xhci_halt(xhci);
+			if (!xhci_start(xhci))
+				xhci->cmd_ring_state = CMD_RING_STATE_RUNNING;
+		}
 
 	port_index = max_ports;
 	while (port_index--) {

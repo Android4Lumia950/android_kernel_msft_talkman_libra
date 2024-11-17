@@ -224,12 +224,8 @@ static int slave_configure(struct scsi_device *sdev)
 		if (!(us->fflags & US_FL_NEEDS_CAP16))
 			sdev->try_rc_10_first = 1;
 
-		/*
-		 * assume SPC3 or latter devices support sense size > 18
-		 * unless US_FL_BAD_SENSE quirk is specified.
-		 */
-		if (sdev->scsi_level > SCSI_SPC_2 &&
-		    !(us->fflags & US_FL_BAD_SENSE))
+		/* assume SPC3 or latter devices support sense size > 18 */
+		if (sdev->scsi_level > SCSI_SPC_2)
 			us->fflags |= US_FL_SANE_SENSE;
 
 		/* USB-IDE bridges tend to report SK = 0x04 (Non-recoverable
@@ -340,7 +336,7 @@ static int queuecommand_lck(struct scsi_cmnd *srb,
 
 	/* check for state-transition errors */
 	if (us->srb != NULL) {
-		printk(KERN_ERR USB_STORAGE "Error in %s: us->srb = %p\n",
+		printk(KERN_ERR USB_STORAGE "Error in %s: us->srb = %pK\n",
 			__func__, us->srb);
 		return SCSI_MLQUEUE_HOST_BUSY;
 	}

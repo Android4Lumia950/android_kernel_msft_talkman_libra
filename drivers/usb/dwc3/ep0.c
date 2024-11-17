@@ -2,6 +2,7 @@
  * ep0.c - DesignWare USB3 DRD Controller Endpoint 0 Handling
  *
  * Copyright (C) 2010-2011 Texas Instruments Incorporated - http://www.ti.com
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * Authors: Felipe Balbi <balbi@ti.com>,
  *	    Sebastian Andrzej Siewior <bigeasy@linutronix.de>
@@ -243,7 +244,7 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	if (!dep->endpoint.desc) {
-		dev_dbg(dwc->dev, "trying to queue request %p to disabled %s\n",
+		dev_dbg(dwc->dev, "trying to queue request %pK to disabled %s\n",
 				request, dep->name);
 		ret = -ESHUTDOWN;
 		goto out;
@@ -255,7 +256,7 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
 		goto out;
 	}
 
-	dev_vdbg(dwc->dev, "queueing request %p to %s length %d, state '%s'\n",
+	dev_vdbg(dwc->dev, "queueing request %pK to %s length %d, state '%s'\n",
 			request, dep->name, request->length,
 			dwc3_ep0_state_string(dwc->ep0state));
 
@@ -777,6 +778,7 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
 	struct usb_ctrlrequest *ctrl = dwc->ctrl_req;
 	int ret = -EINVAL;
 	u32 len;
+	u8 *sys_state = &(dwc->gadget.usb_sys_state);
 
 	if (!dwc->gadget_driver)
 		goto out;
@@ -793,6 +795,33 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
 	}
 
 	dbg_setup(0x00, ctrl);
+
+	if (!GADGET_STATE_DONE(*sys_state)) {
+		switch (GADGET_STATE_PROCESS(*sys_state)) {
+		case GADGET_STATE_PROCESS_GET:
+			if (ctrl->bRequest == USB_REQ_SET_CONFIGURATION)
+				*sys_state = GADGET_STATE_PROCESS_SET;
+			else if (ctrl->bRequest == USB_REQ_CLEAR_FEATURE) {
+				pr_info("[%s]host system may be windows", __func__);
+				*sys_state = GADGET_STATE_DONE_RESET;
+			}
+			break;
+		case GADGET_STATE_PROCESS_SET:
+			if (ctrl->bRequest == USB_REQ_CLEAR_FEATURE) {
+				pr_info("[%s]host system may be windows", __func__);
+				*sys_state = GADGET_STATE_DONE_RESET;
+			} else {
+				pr_info("[%s]host system may be mac os or linux", __func__);
+				*sys_state = GADGET_STATE_DONE_SET;
+			}
+			break;
+		default:
+			if (ctrl->bRequest == USB_REQ_GET_DESCRIPTOR)
+				*sys_state = GADGET_STATE_PROCESS_GET;
+			break;
+		}
+	}
+
 	if ((ctrl->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
 		ret = dwc3_ep0_std_request(dwc, ctrl);
 	else

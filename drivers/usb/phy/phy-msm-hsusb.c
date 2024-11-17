@@ -30,10 +30,6 @@ static int override_phy_init;
 module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 
-static int override_phy_host_init;
-module_param(override_phy_host_init, int, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(override_phy_host_init, "Override HSPHY Host Init Seq");
-
 
 #define PORT_OFFSET(i) ((i == 0) ? 0x0 : ((i == 1) ? 0x6c : 0x88))
 
@@ -139,7 +135,6 @@ struct msm_hsphy {
 	void __iomem		*tcsr;
 	void __iomem		*csr;
 	int			hsphy_init_seq;
-	int			hsphy_init_host_seq;
 	bool			set_pllbtune;
 	u32			core_ver;
 
@@ -159,7 +154,6 @@ struct msm_hsphy {
 	bool			ext_vbus_id;
 	int			num_ports;
 	bool			cable_connected;
-	bool			disable_hvdcp;
 };
 
 /* global reference counter between all HSPHY instances */
@@ -328,31 +322,6 @@ static int msm_hsphy_reset(struct usb_phy *uphy)
 	return 0;
 }
 
-/*
- * write HSPHY init value to QSCRATCH reg to set HSPHY parameters like
- * VBUS valid threshold, disconnect valid threshold, DC voltage level,
- * preempasis and rise/fall time.
- */
-static void msm_hsphy_init_seq(struct msm_hsphy *phy)
-{
-	if (override_phy_init)
-		phy->hsphy_init_seq = override_phy_init;
-	if (phy->hsphy_init_seq)
-		msm_usb_write_readback(phy->base,
-					PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
-					phy->hsphy_init_seq & 0x03FFFFFF);
-}
-
-static void msm_hsphy_init_host_seq(struct msm_hsphy *phy)
-{
-	if (override_phy_host_init)
-		phy->hsphy_init_host_seq = override_phy_host_init;
-	if (phy->hsphy_init_host_seq)
-		msm_usb_write_readback(phy->base,
-				PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
-				phy->hsphy_init_host_seq & 0x03FFFFFF);
-}
-
 static int msm_hsphy_init(struct usb_phy *uphy)
 {
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
@@ -395,7 +364,18 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 
 		writel_relaxed(val, phy->base + HS_PHY_CTRL_COMMON_REG);
 	}
-	msm_hsphy_init_seq(phy);
+
+	/*
+	 * write HSPHY init value to QSCRATCH reg to set HSPHY parameters like
+	 * VBUS valid threshold, disconnect valid threshold, DC voltage level,
+	 * preempasis and rise/fall time.
+	 */
+	if (override_phy_init)
+		phy->hsphy_init_seq = override_phy_init;
+	if (phy->hsphy_init_seq)
+		msm_usb_write_readback(phy->base,
+					PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
+					phy->hsphy_init_seq & 0x03FFFFFF);
 
 	return 0;
 }
@@ -515,17 +495,12 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 		}
 
 		/* can turn off regulators if disconnected in device mode */
-		if (phy->lpm_flags & PHY_RETENTIONED && !phy->cable_connected
-				&& phy->ext_vbus_id) {
-			msm_hsusb_ldo_enable(phy, 0);
-			phy->lpm_flags |= PHY_PWR_COLLAPSED;
-		}
-
-		/* Minimize VDD if charger is connected */
-		if ((phy->lpm_flags & PHY_RETENTIONED && !phy->cable_connected)
-				|| (chg_connected && phy->disable_hvdcp)) {
+		if (phy->lpm_flags & PHY_RETENTIONED && !phy->cable_connected) {
+			if (phy->ext_vbus_id) {
+				msm_hsusb_ldo_enable(phy, 0);
+				phy->lpm_flags |= PHY_PWR_COLLAPSED;
+			}
 			msm_hsusb_config_vdd(phy, 0);
-			phy->lpm_flags |= PHY_VDD_MINIMIZED;
 		}
 
 		count = atomic_dec_return(&hsphy_active_count);
@@ -536,17 +511,13 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 		}
 	} else {
 		atomic_inc(&hsphy_active_count);
-		if (phy->lpm_flags & PHY_VDD_MINIMIZED) {
+		if (phy->lpm_flags & PHY_RETENTIONED && !phy->cable_connected) {
 			msm_hsusb_config_vdd(phy, 1);
-			phy->lpm_flags &= ~PHY_VDD_MINIMIZED;
-		}
+			if (phy->ext_vbus_id) {
+				msm_hsusb_ldo_enable(phy, 1);
+				phy->lpm_flags &= ~PHY_PWR_COLLAPSED;
+			}
 
-		if (phy->lpm_flags & PHY_PWR_COLLAPSED) {
-			msm_hsusb_ldo_enable(phy, 1);
-			phy->lpm_flags &= ~PHY_PWR_COLLAPSED;
-		}
-
-		if (phy->lpm_flags & PHY_RETENTIONED) {
 			if (phy->csr) {
 				/* power on PHY */
 				msm_usb_write_readback(phy->csr,
@@ -640,11 +611,18 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 							OTGDISABLE0, 0);
 			}
 		}
-
-		if (host)
-			msm_hsphy_init_host_seq(phy);
-		else
-			msm_hsphy_init_seq(phy);
+		/*
+		 * write HSPHY init value to QSCRATCH reg to set HSPHY
+		 * parameters like VBUS valid threshold, disconnect valid
+		 * threshold, DC voltage level,preempasis and rise/fall time
+		 */
+		if (override_phy_init)
+			phy->hsphy_init_seq = override_phy_init;
+		if (phy->hsphy_init_seq)
+			msm_usb_write_readback(phy->base,
+					PARAMETER_OVERRIDE_X_REG(0),
+					0x03FFFFFF,
+					phy->hsphy_init_seq & 0x03FFFFFF);
 	}
 
 	phy->suspended = !!suspend; /* double-NOT coerces to bool value */
@@ -673,9 +651,6 @@ static int msm_hsphy_notify_connect(struct usb_phy *uphy,
 				dev_err(phy->phy.dev,
 					"unable to set voltage for vdda33\n");
 		}
-
-		msm_hsphy_init_host_seq(phy);
-
 		return 0;
 	}
 
@@ -720,8 +695,6 @@ static int msm_hsphy_notify_disconnect(struct usb_phy *uphy,
 	phy->cable_connected = false;
 
 	if (uphy->flags & PHY_HOST_MODE) {
-		msm_hsphy_init_seq(phy);
-
 		if (phy->core_ver == MSM_CORE_VER_160 ||
 			phy->core_ver == MSM_CORE_VER_161) {
 			rc = regulator_set_voltage(phy->vdda33,
@@ -759,7 +732,6 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int ret = 0;
-	struct device_node *charger_node;
 
 	phy = devm_kzalloc(dev, sizeof(*phy), GFP_KERNEL);
 	if (!phy) {
@@ -893,12 +865,6 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	else if (!phy->hsphy_init_seq)
 		dev_warn(dev, "hsphy init seq cannot be 0. Using POR value\n");
 
-	if (of_property_read_u32(dev->of_node, "qcom,hsphy-init-host",
-					&phy->hsphy_init_host_seq))
-		dev_dbg(dev, "unable to read hsphy init host seq\n");
-	else if (!phy->hsphy_init_host_seq)
-		dev_warn(dev, "hsphy init seq cannot be 0. Using POR value\n");
-
 	if (of_property_read_u32(dev->of_node, "qcom,num-ports",
 					&phy->num_ports))
 		phy->num_ports = 1;
@@ -909,13 +875,6 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 
 	phy->set_pllbtune = of_property_read_bool(dev->of_node,
 						 "qcom,set-pllbtune");
-
-	charger_node = of_parse_phandle(dev->of_node, "qcom,charger", 0);
-	if (!charger_node)
-		dev_err(dev, "missing qcom,charger property\n");
-	else
-		phy->disable_hvdcp = of_property_read_bool(charger_node,
-						 "qcom,disable-hvdcp");
 
 	/*
 	 * If this workaround flag is enabled, the HW requires the 1.8 and 3.x
