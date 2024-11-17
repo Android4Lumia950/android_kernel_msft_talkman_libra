@@ -1264,7 +1264,6 @@ struct xhci_td {
 
 	/* actual_length of the URB has already been set */
 	bool			urb_length_set;
-
 	/* ZLP received in data stage of a control transfer */
 	bool			zlp_data;
 };
