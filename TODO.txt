@@ -1,0 +1,2 @@
+i just stole the bullhead usb implementation, system for some reason reboots and twrp doesnt output any adb or fastboot whatsoever, FIX!
+other than that,system ui or something else is crashing,fix that too
