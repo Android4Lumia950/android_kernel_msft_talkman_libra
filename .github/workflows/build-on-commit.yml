@@ -3,7 +3,7 @@ name: Release build
 on:
   push:
     branches:
-      - lineage-17.1  # Change to your branch name
+      - USB  # Change to your branch name
 
 env:
   CROSS_COMPILE_PREFIX: /gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          ref: lineage-17.1
+          ref: USB
           fetch-depth: 0
 
       - name: Cache toolchain
