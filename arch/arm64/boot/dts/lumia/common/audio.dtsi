@@ -70,3 +70,12 @@
 					      "cdc-vdd-spkdrv-2";
 	};
 };
+
+&i2c_2 {
+	status = "ok";
+	tas2552@40 {
+		reg = <0x40>;
+		compatible = "ti,tas2552";
+		ti,enable-gpio = <&pmi8994_gpios 12 0x00>;
+	};
+};
